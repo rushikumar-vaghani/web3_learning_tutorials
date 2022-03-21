@@ -3,18 +3,21 @@
 pragma solidity ^0.6.7;
 
 contract testContract {
+	uint256 value;
 
-    uint256 value;
+	constructor (uint256 _p) {
+		value = _p;
+	}
 
-    function setP(uint256 _n) payable public {
-        value = _n;
-    }
+	function setP(uint256 p) payable public {
+		value = p;
+	}
 
-    function setNP(uint256 _n) public {
-        value = _n;
-    }
+	function setNP(uint256 p) public {
+		value = p;
+	}
 
-    function get () view public returns (uint256) {
-        return value;
-    }
+	function getP() view public returns (uint256) {
+		return value;
+	}
 }

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.6.7;
+pragma solidity >=0.6.0 <0.9.0;
 pragma experimental ABIEncoderV2;
-
 // we can use default available ownable solidity
 // import "@openzeppelin/contracts/access/Ownable.sol"
 
@@ -97,6 +96,7 @@ contract Employees {
     function deleteEmployeeData(uint64 id) public onlyOwner returns (bool isDeleted, string memory err_msg) {
         if(employees[id].isPresent) {
             employees[id].isPresent = false;
+            present_employee_count--;
             return (true, "");
         }
         return (false, "Employee data already got deleted or not present");
@@ -125,5 +125,14 @@ contract Employees {
         received_from[receiver_id].push(sender_reward_detail);
 
         return (true, "successfully send reward amount.");
+    }
+
+    function updateEmployeeData(uint64 id, string memory name, string memory designation) public returns (bool isUpdated, string memory err_message) {
+        if (employees[id].isPresent) {
+            employees[id].name = name;
+            employees[id].designation = designation;
+            return (true, "");
+        }
+        return (false, "Employee data already got deleted or not present");
     }
 }

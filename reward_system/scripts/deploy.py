@@ -1,5 +1,6 @@
 from brownie import Employees, accounts
 
 def main():
-        acct = accounts.load('deployment_account')
+        acct = accounts[]
+	print(acct)
         Employees.deploy({'from': acct})

@@ -1,0 +1,111 @@
+from web3 import Web3
+from web3.providers.eth_tester import EthereumTesterProvider
+from eth_tester import PyEVMBackend
+from solcx import compile_source, install_solc, compile_standard
+import json
+
+EMPLOYEE_COMPILE_FILE_PATH = "/Users/web3_learning_tutorials/reward_system/build/contracts/Employees.json"
+EMPLOYEE_SOL_FILE_PATH = "/Users/web3_learning_tutorials/reward_system/contracts/employee_contract.sol"
+GANACHE_CONN = "http://127.0.0.1:7545"
+CHAIN_ID = 1337
+MY_ADDRESS = '0x0bFbc0a761A6644D33038e7616Db5e5efFBEE778'
+MY_PRIVATE_KEY = '0xfdf8602dfe889d06787c16b756797fc6207141dad7eaa953dd0adff785624bc0'
+
+# Read compile file code for abi
+def read_compile_source_file(compile_file_path):
+	with open(compile_file_path, 'r') as file:
+		data = json.load(file)
+	return data
+
+# Read sol file and compile 
+def compile_sol_file(sol_file_path):
+	with open(sol_file_path, "r") as file:
+		simple_storage_file = file.read()
+
+	# Solidity source code
+	compiled_sol = compile_standard({
+		"language": "Solidity",
+		"sources": { "employee_contract.sol": {"content": simple_storage_file}},
+		"settings": {
+			"outputSelection": {
+				"*": {
+					"*": ["abi", "metadata", "evm.bytecode", "evm.bytecode.sourceMap"]
+				}
+			}
+		},
+	},
+	solc_version="0.6.0",)
+
+	return compiled_sol
+
+# compile solidity and get bytecode and abi
+def get_abi_bytecode(sol_file_path):
+	# first compile solidity file 
+	compiled_sol = compile_sol_file(sol_file_path)
+
+	bytecode = compiled_sol["contracts"]["employee_contract.sol"]["Employees"]["evm"]["bytecode"]["object"]
+	abi = json.loads(compiled_sol["contracts"]["employee_contract.sol"]["Employees"]["metadata"])["output"]["abi"]
+	
+	return abi, bytecode
+
+
+def build_and_sign_transaction(w3, tx_hash, should_wait=True):
+	# Build a transaction
+	# Sign a transaction
+	# Send a transaction
+	nonce = w3.eth.getTransactionCount(MY_ADDRESS)
+	transaction = tx_hash.buildTransaction({
+			"chainId" : CHAIN_ID,
+			"from" : MY_ADDRESS,
+			"nonce" : nonce,
+			"gasPrice": w3.eth.gas_price
+		      })
+	signed_txn = w3.eth.account.signTransaction(transaction, private_key=MY_PRIVATE_KEY)
+	
+	# wait for transaction receipt once its completed.
+	if (should_wait):
+		tx_hash = w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+		tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+		return tx_receipt
+
+	return signed_txn
+	
+
+# Deploye conract and get it sign using private key
+def deploye_contract(w3, abi, bytecode):
+	# Create contract
+	contract = w3.eth.contract(abi=abi, bytecode=bytecode)
+	tx_hash = contract.constructor()
+	tx_receipt = build_and_sign_transaction(w3, tx_hash)
+	
+	# To work with contract we need contract address and ABI
+	contract_hash = w3.eth.contract(address=tx_receipt.contractAddress, abi=abi)
+	print(f'Contract deployed to: {contract_hash}\n')
+
+	return contract_hash
+
+# To add employee data 
+def add_employee_data(w3, contract, name, designation, reward_amount=None):
+	if reward_amount:
+		tx_hash = contract.functions.addEmployeeData(name, reward_amount, designation)
+	else:
+		tx_hash = contract.functions.addEmployeeData(name, designation)
+
+	# buld and sign transaction by private key
+	tx_receipt = build_and_sign_transaction(w3, tx_hash)
+	print(f'Employee data added, transcation receipt : {tx_receipt}\n')
+
+	return tx_receipt
+
+abi, bytecode = get_abi_bytecode(EMPLOYEE_SOL_FILE_PATH)
+w3 = Web3(Web3.HTTPProvider(GANACHE_CONN))
+#print(w3.isConnected())
+
+# Deploy contract
+reward_contract = deploye_contract(w3, abi, bytecode)
+print(f'Contract deployed to: {reward_contract}\n')
+
+add_employee_data(w3, reward_contract, "John", "Engineer")
+latestData = reward_contract.functions.getEmployeeData(0).call()
+print(latestData)
+
